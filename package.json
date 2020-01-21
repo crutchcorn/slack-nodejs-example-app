@@ -1,0 +1,15 @@
+{
+  "name": "slack-nodejs-example-app",
+  "version": "1.0.0",
+  "description": "An example app for showcasing the Slack NodeJS SDK",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@slack/events-api": "^2.3.1",
+    "@slack/web-api": "^5.7.0"
+  }
+}
