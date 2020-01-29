@@ -4,7 +4,8 @@
   "description": "An example app for showcasing the Slack NodeJS SDK",
   "main": "index.js",
   "scripts": {
-  	"start": "env-cmd node ./index.js",
+  	"start:events": "env-cmd node ./events.js",
+  	"start:interactive": "env-cmd node ./interactive.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

@@ -143,7 +143,22 @@ Simply click `Install App to Workspace`, then `Allow` to give permissions to add
 
 Once this is done, you can send a test message to a public channel and see it printed out in your console!
 
-![A showcase of the message "Hello, World" being sent to the app](./hello_world.png) 
+![A showcase of the message "Hello, World" being sent to the app](./hello_world.png)
+
+
+
+# App Interactivity {#interactive-message-package}
+
+While listening to events alone can be very useful in some circumstances, oftentimes having a way to interact with you application can be very helpful. As a result, the Slack SDK also includes the `@slack/interactive-messages` package to help you provide interactions with the user more directly. Using this package, you can respond to the user's input. For example, let's say we wanted to reproduce the [PlusPlus](https://go.pluspl.us/) Slackbot as a way to track a user's score. 
+
+We want to have the following functionality for an MVP:
+
+- `@UserOrThing++`: A way to add a point to a user or thing
+- `@UserOrThing--`: A way to remove a point from a user or thing
+- `@PointsRUs leaderboard`: A flat list of the items/people with points
+
+Ideally we'd use a database to do this, but let's start small for now
+ 
 
 # Deployment {#deployment}
 
