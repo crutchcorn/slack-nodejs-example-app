@@ -1,3 +1,7 @@
+
+
+
+
 # Initial Signup {#signup-for-dev-account}
 
 We'll need to [signup for a developer account and create an app to host our applicaiton logic using this link](https://api.slack.com/apps)
@@ -105,7 +109,7 @@ With this command still running, you can press on the "Add features and function
 
 This will bring you to a page with an "On/Off" toggle. Toggle it to "On" and add the `ngrok` domain in the request URL
 
-![Adding the ngrok domain into the "event subscription" area ](./event-subscription-enable.png)
+![Adding the ngrok domain into the "event subscription" area](./event-subscription-enable.png)
 
 But the domain isn't saved yet. We first need to add workspace events to subscribe to. This is to ensure that any app doesn't simply have root permissions to everything for privacy and security's sake
 
@@ -157,8 +161,93 @@ We want to have the following functionality for an MVP:
 - `@UserOrThing--`: A way to remove a point from a user or thing
 - `@PointsRUs leaderboard`: A flat list of the items/people with points
 
-Ideally we'd use a database to do this, but let's start small for now
- 
+Each of these messages will prompt the bot to respond with a message in the same channel. Ideally we'd use a database to store score for long-term projects, but for the interim, let's use in-memory storage
+
+
+
+## Setup
+
+First and foremost, something you'll need to do is add a new OAuth permission to enable the functionality for the bot to write to the channel
+![](./chat_write_bot_oauth.png)
+
+After enabling the new Oauth permission, you'll need to reinstall your app. This is because you're changing the permissions of your apps and you need to accept the new permissions when you reinstall the app. If you scroll to the top of the same Oauth page, you should see a `Reinstall App` button that will help you do this easily
+
+Once this is done, you can access the oauth token for the installation of your workspace. This token will enable us to send messages to the workspace itself. This token is unique per-workspace, so if you're intending for a broader release of your bot (to be easily added with a single button click), you'll likely need to walk through their oauth token request system. Since this is meant as an introductory look, we'll just copy this token and store it into our `.ENV` file,
+
+
+
+![](./oauth_tokens.png)
+
+
+
+You'll want to place this into your `.ENV` file. I named the environmental variable `OAUTH_TOKEN`, so when you see that in code examples, know that this is in reference to this value
+
+## The Code
+
+To start, we need to install the package that'll allow us to use the web API:
+
+```
+npm i @slack/web-api
+```
+
+The web API should enable us to use the [`postMessage`](https://api.slack.com/methods/chat.postMessage) method to send messages to a channel when they send a message
+
+Once this is installed, we're able to instanciate the web API with the oauth token we grabbed earlier
+
+```javascript
+const { WebClient } = require('@slack/web-api');
+const token = process.env.OAUTH_TOKEN;
+const web = new WebClient(token);
+```
+
+After this is setup, we could run code like:
+
+```javascript
+web.chat.postMessage({
+  text: 'A post message',
+  channel: channelId,
+});
+```
+
+To send a message. Let's try to use this API to add some trivial logic into our existing `events` listening functionality.
+
+```javascript
+const { createEventAdapter } = require('@slack/events-api');
+const { WebClient } = require('@slack/web-api');
+
+const token = process.env.OAUTH_TOKEN;
+const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
+
+const slackEvents = createEventAdapter(slackSigningSecret);
+const web = new WebClient(token);
+const port = process.env.PORT || 3000;
+
+slackEvents.on('message', async event => {
+	console.log(`Received a message event: user ${event.user} in channel ${event.channel} says ${event.text}`);
+
+  // Check if the text includes the text we'd want to use to check the leaderboard
+	if (/@pointsrus leaderboard/i.exec(event.text)) {
+		const result = await web.chat.postMessage({
+      // We'll add more functionality in the future. We just want to test it works, first
+			text: 'This should output a leaderboard',
+			channel: event.channel,
+		});
+
+		console.log(`Successfully send message ${result.ts} in conversation ${event.channel}`);
+	}
+});
+
+slackEvents.on('error', console.error);
+
+slackEvents.start(port).then(() => {
+	console.log(`server listening on port ${port}`);
+});
+```
+
+The above code should 
+
+## Adding State {#interactive-local-state}
+
 
 # Deployment {#deployment}
 
