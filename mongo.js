@@ -1,7 +1,7 @@
 const { createEventAdapter } = require('@slack/events-api');
 const { WebClient } = require('@slack/web-api');
 const { MongoClient } = require('mongodb');
-const { tablize } = require('batteries-not-included/utils');
+const { tablize } = require('batteries-not-included/dist/utils/index.js');
 
 const token = process.env.OAUTH_TOKEN;
 const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
@@ -9,11 +9,14 @@ const mongoPass = process.env.MONGOPASS;
 const port = process.env.PORT || 3000;
 const uri = `mongodb+srv://databaseuser:${mongoPass}@cluster0-bm9vw.mongodb.net/test?retryWrites=true&w=majority`;
 
+console.log(uri)
+
 const slackEvents = createEventAdapter(slackSigningSecret);
 const web = new WebClient(token);
 const dbClient = new MongoClient(uri, { useNewUrlParser: true });
 
 dbClient.connect(err => {
+	if (err) console.error(err);
 	const collection = dbClient.db('test').collection('scores');
 
 	/**
@@ -38,35 +41,51 @@ dbClient.connect(err => {
 	};
 
 	slackEvents.on('message', async event => {
-		console.log(`Received a message event: user ${event.user} in channel ${event.channel} says ${event.text}`);
+		try {
+			console.log(`Received a message event: user ${event.user} in channel ${event.channel} says ${event.text}`);
 
-		const { action, word } = getIsPlusOrMinus(event.text);
-		if (action) {
-			const value = action == 'add' ? 1 : -1;
+			const { action, word } = getIsPlusOrMinus(event.text);
+			if (action) {
+				const value = action == 'add' ? 1 : -1;
 
-			const doc = await collection.findOneAndUpdate({ word }, { $inc: { count: value } }, { returnOriginal: false, upsert: true });
+				const doc = await collection.findOneAndUpdate(
+					{ word },
+					{ $inc: { count: value } },
+					{ returnOriginal: false, upsert: true }
+				);
 
-			const result = await web.chat.postMessage({
-				text: `${doc.word} ${action == 'add' ? 'had a point added' : 'had a point removed'}. Score is now at: ${doc.count}`,
-				channel: event.channel,
-			});
+				console.log(doc);
 
-			console.log(`Successfully send message ${result.ts} in conversation ${event.channel}`);
-		}
+				const result = await web.chat.postMessage({
+					text: `${doc.value.word} ${
+						action == 'add' ? 'had a point added' : 'had a point removed'
+					}. Score is now at: ${doc.value.count}`,
+					channel: event.channel,
+				});
 
-		if (/@pointsrus leaderboard/i.exec(event.text)) {
-			const topTenCollection = await collection.find({}).sort({ count: 1 }).limit(10).toArray();
-			const state = topTenCollection.map(doc => {
-				return [doc.word, doc.count]
-			});
-			const tableString = tablize([['Item', 'Count'], ...Object.entries(state)]);
+				console.log(`Successfully send message ${result.ts} in conversation ${event.channel}`);
+			}
 
-			const result = await web.chat.postMessage({
-				text: '```\n' + tableString + '```',
-				channel: event.channel,
-			});
+			if (/@pointsrus leaderboard/i.exec(event.text)) {
+				const topTenCollection = await collection
+					.find({})
+					.sort({ count: 1 })
+					.limit(10)
+					.toArray();
+				const state = topTenCollection.map(doc => {
+					return [doc.word, doc.count];
+				});
+				const tableString = tablize([['Item', 'Count'], ...state]);
 
-			console.log(`Successfully send message ${result.ts} in conversation ${event.channel}`);
+				const result = await web.chat.postMessage({
+					text: '```\n' + tableString + '```',
+					channel: event.channel,
+				});
+
+				console.log(`Successfully send message ${result.ts} in conversation ${event.channel}`);
+			}
+		} catch (e) {
+			console.error(e);
 		}
 	});
 

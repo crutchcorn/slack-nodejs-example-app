@@ -6,6 +6,7 @@
   "scripts": {
     "start:events": "env-cmd node ./events.js",
     "start:interactive": "env-cmd node ./interactive.js",
+    "start:mongo": "env-cmd node ./mongo.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
