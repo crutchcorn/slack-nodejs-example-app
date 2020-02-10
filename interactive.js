@@ -37,10 +37,9 @@ slackEvents.on('message', async event => {
 	if (action) {
 		const currentState = state[word] || 0;
 		state[word] = action == 'add' ? currentState + 1 : currentState - 1;
+		const actionString = action == 'add' ? 'had a point added' : 'had a point removed';
 		const result = await web.chat.postMessage({
-			text: `${word} ${action == 'add' ? 'had a point added' : 'had a point removed'}. Score is now at: ${
-				state[word]
-			}`,
+			text: `${word} ${actionString}. Score is now at: ${state[word]}`,
 			channel: event.channel,
 		});
 
@@ -48,8 +47,10 @@ slackEvents.on('message', async event => {
 	}
 
 	if (/@pointsrus leaderboard/i.exec(event.text)) {
+		// Tablize just takes a 2D array, treats the first item as a header row, then makes an ASCII table
 		const tableString = tablize([['Item', 'Count'], ...Object.entries(state)]);
 
+		// Send that table in codeblocks to monospace the font and render properly
 		const result = await web.chat.postMessage({
 			text: '```\n' + tableString + '```',
 			channel: event.channel,

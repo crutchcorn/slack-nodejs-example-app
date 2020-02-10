@@ -9,24 +9,17 @@ const mongoPass = process.env.MONGOPASS;
 const port = process.env.PORT || 3000;
 const uri = `mongodb+srv://databaseuser:${mongoPass}@cluster0-bm9vw.mongodb.net/test?retryWrites=true&w=majority`;
 
-console.log(uri)
-
 const slackEvents = createEventAdapter(slackSigningSecret);
 const web = new WebClient(token);
 const dbClient = new MongoClient(uri, { useNewUrlParser: true });
 
+// Connect to Mongo server instance
 dbClient.connect(err => {
+	// Show any errors that showup in the 
 	if (err) console.error(err);
 	const collection = dbClient.db('test').collection('scores');
 
-	/**
-	 * @type <Record<string, number>> A record of the word and score. Should start at 0
-	 * This should be replaced by a database for persistence. This is just a demo
-	 */
-	const state = {};
-
 	const getIsPlusOrMinus = str => {
-		// Accept em-dash for cases like MacOS turning -- into an emdash
 		const plusOrMinusRegex = /\@(\w+?)(\-{2}|\+{2}|\—{1})/;
 		const [_, itemToScore, scoreStr] = plusOrMinusRegex.exec(str) || [];
 		switch (scoreStr) {
@@ -48,18 +41,20 @@ dbClient.connect(err => {
 			if (action) {
 				const value = action == 'add' ? 1 : -1;
 
+				// Update the document and also return the document's value for us to use
 				const doc = await collection.findOneAndUpdate(
 					{ word },
+					// Add `value` to "count" property. If `-1`, then remove one from "count"
 					{ $inc: { count: value } },
+					// `returnOriginal: false` says to return the updated document
+					// `upsert` means that if the document doesn't already exist, create a new one
 					{ returnOriginal: false, upsert: true }
 				);
 
-				console.log(doc);
+				const actionString = action == 'add' ? 'had a point added' : 'had a point removed';
 
 				const result = await web.chat.postMessage({
-					text: `${doc.value.word} ${
-						action == 'add' ? 'had a point added' : 'had a point removed'
-					}. Score is now at: ${doc.value.count}`,
+					text: `${doc.value.word} ${actionString}. Score is now at: ${doc.value.count}`,
 					channel: event.channel,
 				});
 
@@ -68,10 +63,15 @@ dbClient.connect(err => {
 
 			if (/@pointsrus leaderboard/i.exec(event.text)) {
 				const topTenCollection = await collection
+					// Find ANY document 
 					.find({})
+					// Sort it from highest to lowest
 					.sort({ count: 1 })
+					// Limit it to 10 in case there are hundreds of values
 					.limit(10)
+					// Then, return it as a promise that has an array in it
 					.toArray();
+				// Mapping the array to display with `tablize`
 				const state = topTenCollection.map(doc => {
 					return [doc.word, doc.count];
 				});
